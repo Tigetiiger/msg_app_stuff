@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS app.users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username      TEXT NOT NULL UNIQUE,
   display_name  TEXT,
+  password_hash TEXT NOT NULL,
+  password_updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
