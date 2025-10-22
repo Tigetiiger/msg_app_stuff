@@ -27,6 +27,8 @@ services:
       FLYWAY_USER: ${POSTGRES_USER:-app}
       FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-app}
       FLYWAY_LOCATIONS: filesystem:/flyway/sql 
+      FLYWAY_SCHEMAS: public,app
+      FLYWAY_DEFAULT_SCHEMA: public
     command: migrate
     volumes:
       # Mount migrations read-only
