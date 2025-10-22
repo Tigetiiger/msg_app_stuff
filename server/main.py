@@ -1,10 +1,10 @@
-from pydantic import BaseModel
 from typing import AsyncGenerator
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import Session
 import security
+import models
 
 app = FastAPI(title="msg_api")
 
@@ -14,15 +14,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield s
 
 
-class CreateUserIn(BaseModel):
-    username: str
-    display_name: str | None = None
-    mail: str
-    new_password: str
-
-
 @app.post("/users")
-async def create_user(body: CreateUserIn, db: AsyncSession = Depends(get_db)):
+async def create_user(body: models.CreateUserModel, db: AsyncSession = Depends(get_db)):
     q = text(
         """
         INSERT INTO users (username, display_name, mail, password_hash)
@@ -45,13 +38,8 @@ async def create_user(body: CreateUserIn, db: AsyncSession = Depends(get_db)):
     return dict(ret)
 
 
-class LoginIn(BaseModel):
-    username: str
-    password: str
-
-
 @app.post("/auth/login")
-async def login(body: LoginIn, db: AsyncSession = Depends(get_db)):
+async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
     q = text("SELECT id, password_hash FROM users WHERE username=:u")
     res = (await db.execute(q, {"u": body.username})).mappings().first()
 
