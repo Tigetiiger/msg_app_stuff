@@ -1,2 +1,2 @@
 # msg_app_stuff
-my messeging app for learning
+my messaging app for learning

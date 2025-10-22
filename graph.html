@@ -1,0 +1,374 @@
+
+<html lang="en">
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js" integrity="sha512-iTgTmIgxyA2YehKNVbzLJx4j9SnuC5ihtRrtxVkXH/9nF3vXBN5YeNQp+6wufBWKD3u+roHVNOvWBMufQnBbug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    </head>
+
+    <body>
+        <style>
+            @media print {
+                .noPrint {
+                    display: none;
+                }
+            }
+            .button {
+                background-color: #5555cc;
+                border: none;
+                color: white;
+                padding: 5px 10px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 18px;
+            }
+        </style>
+
+        <div style="display: grid; grid-template-columns: 75% 25%; grid-template-rows: 30px auto; height: 100vh;">
+            <div id="mylegend" style="background-color: lightgrey; grid-column-end: span 2;height: 100%"></div>
+            <div id="mynetwork"></div>
+            <div style="background-color: lightgrey;min-height:100%;height:0;overflow-y: auto;">
+                <div>
+                    <input type="checkbox" onchange="switchBuild()" id="show_build_requires" checked />
+                    <label for="show_build_requires">Show build-requires</label>
+                </div>
+                <div>
+                    <input type="checkbox" onchange="switchTest()" id="show_test_requires" checked />
+                    <label for="show_test_requires">Show test-requires</label>
+                </div>
+                <div>
+                    <input type="checkbox" onchange="collapsePackages()" id="collapse_packages"/>
+                    <label for="collapse_packages">Group packages</label>
+                </div>
+                 <div>
+                    <input type="checkbox" onchange="showPackageType()" id="show_package_type"/>
+                    <label for="show_package_type">Show package type</label>
+                </div>
+                 <div>
+                    <input type="search" placeholder="Search packages..." oninput="searchPackages(this)" onkeydown="onSearchKeyDown(event)">
+                </div>
+                 <div>
+                    <input type="search" placeholder="Exclude packages..." title="Add a comma to exclude an additional package" oninput="excludePackages(this)">
+                </div>
+                <div>
+                    <input type="checkbox" onchange="showhideclass('controls')" id="show_controls"/>
+                    <label for="show_controls">Show graph controls</label>
+                </div>
+                <div id="controls" class="controls" style="padding:5; display:none"></div>
+                <div id="details"  style="padding:10;" class="noPrint">Package info: Click on one package to show information</div>
+                <div id="error" style="padding:10;" class="noPrint"></div>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            const graph_data = {"error": null, "nodes": {"0": {"author": null, "binary": null, "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": null, "dependencies": {"1": {"build": false, "direct": true, "force": false, "headers": true, "libs": false, "package_id_mode": null, "ref": "argparse/3.2", "require": "argparse/3.2", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "10": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": null, "ref": "fmt/12.0.0", "require": "fmt/[\u003e=11.0]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "11": {"build": false, "direct": true, "force": false, "headers": true, "libs": false, "package_id_mode": null, "ref": "nlohmann_json/3.12.0", "require": "nlohmann_json/[\u003e=3.11]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "2": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": null, "ref": "oatpp/1.3.0.latest", "require": "oatpp/[\u003e=1.3]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "4": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": null, "ref": "libpqxx/7.10.3", "require": "libpqxx/[\u003e=7.9]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "5": {"build": false, "direct": false, "force": false, "headers": false, "libs": true, "package_id_mode": null, "ref": "libpq/15.4", "require": "libpq/15.4", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "6": {"build": false, "direct": true, "force": false, "headers": true, "libs": false, "package_id_mode": null, "ref": "jwt-cpp/0.7.1", "require": "jwt-cpp/[\u003e=0.7]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "7": {"build": false, "direct": false, "force": false, "headers": true, "libs": true, "package_id_mode": null, "ref": "openssl/3.6.0", "require": "openssl/3.6.0", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "8": {"build": false, "direct": false, "force": false, "headers": false, "libs": true, "package_id_mode": null, "ref": "zlib/1.3.1", "require": "zlib/1.3.1", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}, "9": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": null, "ref": "spdlog/1.16.0", "require": "spdlog/[\u003e=1.12]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}}, "deprecated": null, "description": null, "generators": ["CMakeDeps", "CMakeToolchain"], "generators_folder": null, "homepage": null, "id": "0", "immutable_package_folder": null, "info_invalid": null, "invalid_build": false, "label": "conanfile.txt", "languages": [], "license": null, "name": null, "options": {}, "options_definitions": {}, "options_description": null, "package_folder": null, "package_id": null, "package_type": "unknown", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Consumer", "recipe_folder": null, "ref": "conanfile", "remote": null, "revision_mode": "hash", "rrev": null, "rrev_timestamp": null, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": null, "upload_policy": null, "url": null, "user": null, "vendor": false, "version": null, "win_bash": null, "win_bash_run": null}, "1": {"author": null, "binary": "Cache", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"sources": {"3.2": {"sha256": "9dcb3d8ce0a41b2a48ac8baa54b51a9f1b6a2c52dd374e28cc713bab0568ec98", "url": "https://github.com/p-ranav/argparse/archive/v3.2.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": null, "dependencies": {}, "deprecated": null, "description": "Argument Parser for Modern C++", "generators": [], "generators_folder": null, "homepage": "https://github.com/p-ranav/argparse", "id": "1", "immutable_package_folder": null, "info": {}, "info_invalid": null, "invalid_build": false, "label": "argparse/3.2", "languages": [], "license": "MIT", "name": "argparse", "options": {}, "options_definitions": {}, "options_description": null, "package_folder": null, "package_id": "da39a3ee5e6b4b0d3255bfef95601890afd80709", "package_type": "header-library", "prev": "beb5c17af6867943c09cacf1b37bb049", "prev_timestamp": 1740579876.94, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/argpa4333bdf5c80f8/e", "ref": "argparse/3.2#e3bf8d3aa1eb0d23c48ec61b60e0a029", "remote": null, "revision_mode": "hash", "rrev": "e3bf8d3aa1eb0d23c48ec61b60e0a029", "rrev_timestamp": 1740579829.243, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["argument", "parsing", "header-only"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "3.2", "win_bash": null, "win_bash_run": null}, "10": {"author": null, "binary": "Missing", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"sources": {"12.0.0": {"sha256": "1c32293203449792bf8e94c7f6699c643887e826f2d66a80869b4f279fb07d25", "url": "https://github.com/fmtlib/fmt/releases/download/12.0.0/fmt-12.0.0.zip"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"fPIC": true, "header_only": false, "shared": false, "with_fmt_alias": false, "with_os_api": true, "with_unicode": true}, "dependencies": {}, "deprecated": null, "description": "A safe and fast alternative to printf and IOStreams.", "generators": [], "generators_folder": null, "homepage": "https://github.com/fmtlib/fmt", "id": "10", "immutable_package_folder": null, "info": {"options": {"fPIC": "True", "header_only": "False", "shared": "False", "with_os_api": "True", "with_unicode": "True"}, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "fmt/12.0.0", "languages": [], "license": "MIT", "name": "fmt", "options": {"fPIC": "True", "header_only": "False", "shared": "False", "with_fmt_alias": "False", "with_os_api": "True", "with_unicode": "True"}, "options_definitions": {"fPIC": ["True", "False"], "header_only": ["True", "False"], "shared": ["True", "False"], "with_fmt_alias": ["True", "False"], "with_os_api": ["True", "False"], "with_unicode": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "4833ef63bd83f13faceda52fc47debc2a79a5f38", "package_type": "static-library", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/fmtad57c105a6afe/e", "ref": "fmt/12.0.0#dc7de7f3968e5d6b377f27b7d0f33916", "remote": null, "revision_mode": "hash", "rrev": "dc7de7f3968e5d6b377f27b7d0f33916", "rrev_timestamp": 1758262922.745, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["format", "iostream", "printf"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "12.0.0", "win_bash": null, "win_bash_run": null}, "11": {"author": null, "binary": "Cache", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"sources": {"3.12.0": {"sha256": "4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187", "url": "https://github.com/nlohmann/json/archive/v3.12.0.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": null, "dependencies": {}, "deprecated": null, "description": "JSON for Modern C++ parser and generator.", "generators": [], "generators_folder": null, "homepage": "https://github.com/nlohmann/json", "id": "11", "immutable_package_folder": null, "info": {}, "info_invalid": null, "invalid_build": false, "label": "nlohmann_json/3.12.0", "languages": [], "license": "MIT", "name": "nlohmann_json", "options": {}, "options_definitions": {}, "options_description": null, "package_folder": null, "package_id": "da39a3ee5e6b4b0d3255bfef95601890afd80709", "package_type": "header-library", "prev": "2ea4b814fc9da53f7cdf5b7d68052688", "prev_timestamp": 1744735935.225, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/nlohm464c18b21d50d/e", "ref": "nlohmann_json/3.12.0#2d634ab0ec8d9f56353e5ccef6d6612c", "remote": null, "revision_mode": "hash", "rrev": "2d634ab0ec8d9f56353e5ccef6d6612c", "rrev_timestamp": 1744735883.94, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["json", "header-only"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "3.12.0", "win_bash": null, "win_bash_run": null}, "2": {"author": null, "binary": "Missing", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"sources": {"1.3.0.latest": {"sha256": "adc3b88076532838cd0fb8155872d6a9467ac0cb5df319735a2396ce6945d064", "url": "https://github.com/oatpp/oatpp/archive/1.3.0-latest.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"fPIC": true, "shared": false, "with_test_library": false}, "dependencies": {"3": {"build": true, "direct": true, "force": false, "headers": false, "libs": false, "package_id_mode": null, "ref": "cmake/3.31.9", "require": "cmake/[\u003e=3.20 \u003c4]", "run": true, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": false}}, "deprecated": null, "description": "Modern Web Framework for C++", "generators": [], "generators_folder": null, "homepage": "https://github.com/oatpp/oatpp", "id": "2", "immutable_package_folder": null, "info": {"options": {"fPIC": "True", "shared": "False", "with_test_library": "False"}, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "oatpp/1.3.0.latest", "languages": [], "license": "Apache-2.0", "name": "oatpp", "options": {"fPIC": "True", "shared": "False", "with_test_library": "False"}, "options_definitions": {"fPIC": ["True", "False"], "shared": ["True", "False"], "with_test_library": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "c08f1e3e85ab47b54814467f6df2dc970362a04d", "package_type": "static-library", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/oatpp9e9fe00bff35b/e", "ref": "oatpp/1.3.0.latest#66ea077234974f1bb4ca85506ef49b35", "remote": null, "revision_mode": "hash", "rrev": "66ea077234974f1bb4ca85506ef49b35", "rrev_timestamp": 1730201096.834, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["oat++", "web-framework"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "1.3.0.latest", "win_bash": null, "win_bash_run": null}, "3": {"author": null, "binary": "Skip", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"sources": {"3.31.9": {"Linux": {"armv8": {"sha256": "09b7127b09e3d3ed5fa894f4e59f6a01112f267da6acc4249e46dba97b14afcb", "url": "https://cmake.org/files/v3.31/cmake-3.31.9-linux-aarch64.tar.gz"}, "x86_64": {"sha256": "312d78e0b7c5c9b4a97a87a46c3e525aa84895fe8135c238c4616bba73dc9518", "url": "https://cmake.org/files/v3.31/cmake-3.31.9-linux-x86_64.tar.gz"}}, "Macos": {"universal": {"sha256": "709726f0c10c5b5255e9eeee2ac586cdaf7595b0070c7f35def15b1a38fa0c95", "url": "https://cmake.org/files/v3.31/cmake-3.31.9-macos10.10-universal.tar.gz"}}, "Windows": {"armv8": {"sha256": "45b319a85083cedb4e9e0ecc38c2747cdfde19954e645fd2137370e03c4b333a", "url": "https://cmake.org/files/v3.31/cmake-3.31.9-windows-arm64.zip"}, "x86_64": {"sha256": "dc16867d0c0ffb35026976aff119335d5b47def44e76ae82ffafdc1f98b3d59d", "url": "https://cmake.org/files/v3.31/cmake-3.31.9-windows-x86_64.zip"}}}}}, "conf_info": {}, "context": "build", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": null, "dependencies": {}, "deprecated": null, "description": "CMake, the cross-platform, open-source build system.", "generators": [], "generators_folder": null, "homepage": "https://github.com/Kitware/CMake", "id": "3", "immutable_package_folder": null, "info": {"settings": {"arch": "x86_64", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "cmake/3.31.9", "languages": [], "license": "BSD-3-Clause", "name": "cmake", "options": {}, "options_definitions": {}, "options_description": null, "package_folder": null, "package_id": "63fead0844576fc02943e16909f08fcdddd6f44b", "package_type": "application", "prev": "dd320e548f523b4304a8d7b31dc98082", "prev_timestamp": 1758832356.674, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/cmake84c8f139f3f9f/e", "ref": "cmake/3.31.9#2032c6471fe4f5a3e17f65fed518d545", "remote": null, "revision_mode": "hash", "rrev": "2032c6471fe4f5a3e17f65fed518d545", "rrev_timestamp": 1758832282.188, "settings": {"arch": "x86_64", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["build", "installer"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "3.31.9", "win_bash": null, "win_bash_run": null}, "4": {"author": null, "binary": "Cache", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"patches": {"7.10.3": [{"patch_description": "Keep `CMAKE_MODULE_PATH` to be changed by conan.", "patch_file": "patches/0001-cmake-fix-module.patch", "patch_type": "conan"}]}, "sources": {"7.10.3": {"sha256": "c5ba455e4f28901297c18a76e533c466cbe8908d4b2ff6313235954bb37cef25", "url": "https://github.com/jtv/libpqxx/archive/refs/tags/7.10.3.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"fPIC": true, "shared": false}, "dependencies": {"5": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": "minor_mode", "ref": "libpq/15.4", "require": "libpq/15.4", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}}, "deprecated": null, "description": "The official C++ client API for PostgreSQL", "generators": [], "generators_folder": null, "homepage": "https://github.com/jtv/libpqxx", "id": "4", "immutable_package_folder": null, "info": {"options": {"fPIC": "True", "shared": "False"}, "requires": ["libpq/15.4.Z"], "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "libpqxx/7.10.3", "languages": [], "license": "BSD-3-Clause", "name": "libpqxx", "options": {"fPIC": "True", "shared": "False"}, "options_definitions": {"fPIC": ["True", "False"], "shared": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "d77eb81b3b0ca2b445e5edd4e7aea92fc40b53de", "package_type": "static-library", "prev": "6c2f698ca08bd3a1de327b2fab53a8db", "prev_timestamp": 1760899836.0655234, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/libpq8252f1d4ca380/e", "ref": "libpqxx/7.10.3#1663b5178dcac1b1476ba8d93ec38e7f", "remote": null, "revision_mode": "hash", "rrev": "1663b5178dcac1b1476ba8d93ec38e7f", "rrev_timestamp": 1759870851.985, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["libpqxx", "postgres", "postgresql", "database", "db"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "7.10.3", "win_bash": null, "win_bash_run": null}, "5": {"author": null, "binary": "Missing", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"patches": {"15.4": [{"patch_description": "port MinGW: Enable building static libraries in MinGW.", "patch_file": "patches/15/001-mingw-build-static-libraries.patch", "patch_type": "portability"}, {"patch_description": "Fix libpq w/ openssl \u003e=3.2.x", "patch_file": "patches/15/0001-Use-BIO_-get-set-_app_data-instead-of-BIO_-get-se.patch", "patch_type": "backport"}]}, "sources": {"15.4": {"sha256": "baec5a4bdc4437336653b6cb5d9ed89be5bd5c0c58b94e0becee0a999e63c8f9", "url": "https://ftp.postgresql.org/pub/source/v15.4/postgresql-15.4.tar.bz2"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"disable_rpath": false, "fPIC": true, "shared": false, "with_icu": false, "with_openssl": false}, "dependencies": {}, "deprecated": null, "description": "The library used by all the standard PostgreSQL tools.", "generators": [], "generators_folder": null, "homepage": "https://www.postgresql.org/docs/current/static/libpq.html", "id": "5", "immutable_package_folder": null, "info": {"options": {"disable_rpath": "False", "fPIC": "True", "shared": "False", "with_icu": "False", "with_openssl": "False"}, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "libpq/15.4", "languages": [], "license": "PostgreSQL", "name": "libpq", "options": {"disable_rpath": "False", "fPIC": "True", "shared": "False", "with_icu": "False", "with_openssl": "False"}, "options_definitions": {"disable_rpath": ["True", "False"], "fPIC": ["True", "False"], "shared": ["True", "False"], "with_icu": ["True", "False"], "with_openssl": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "3c8a97576a4a4f653ef131487972e6a08ac951a8", "package_type": "static-library", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Downloaded", "recipe_folder": "/home/artur/.conan2/p/libpqfe96d90864ac9/e", "ref": "libpq/15.4#eedc1c159c38316ab0e8d38dbe2b5d62", "remote": "conancenter", "revision_mode": "hash", "rrev": "eedc1c159c38316ab0e8d38dbe2b5d62", "rrev_timestamp": 1755512020.725, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["postgresql", "database", "db"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "15.4", "win_bash": null, "win_bash_run": null}, "6": {"author": null, "binary": "Cache", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"patches": {"0.7.1": [{"patch_description": "Remove picojson namespace from its include", "patch_file": "patches/0005-fix-picojson-header-location-for-conan.patch", "patch_type": "conan"}]}, "sources": {"0.7.1": {"sha256": "e52f247d5e62fac5da6191170998271a70ce27f747f2ce8fde9b09f96a5375a4", "url": "https://github.com/Thalhammer/jwt-cpp/archive/v0.7.1.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"with_picojson": false}, "dependencies": {"7": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": "unrelated_mode", "ref": "openssl/3.6.0", "require": "openssl/[\u003e=1.1 \u003c4]", "run": false, "skip": false, "test": false, "transitive_headers": true, "transitive_libs": true, "visible": true}, "8": {"build": false, "direct": false, "force": false, "headers": false, "libs": true, "package_id_mode": "unrelated_mode", "ref": "zlib/1.3.1", "require": "zlib/1.3.1", "run": false, "skip": false, "test": false, "transitive_headers": true, "transitive_libs": true, "visible": true}}, "deprecated": null, "description": "A C++ JSON Web Token library for encoding/decoding", "generators": [], "generators_folder": null, "homepage": "https://github.com/Thalhammer/jwt-cpp", "id": "6", "immutable_package_folder": null, "info": {}, "info_invalid": null, "invalid_build": false, "label": "jwt-cpp/0.7.1", "languages": [], "license": "MIT", "name": "jwt-cpp", "options": {"with_picojson": "False"}, "options_definitions": {"with_picojson": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "da39a3ee5e6b4b0d3255bfef95601890afd80709", "package_type": "header-library", "prev": "55854ca3d2b8b225b495619ce05b886f", "prev_timestamp": 1742459143.147, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/jwt-c9ffc9c9a11991/e", "ref": "jwt-cpp/0.7.1#647a622a15a72d72cb73e8f0229f616a", "remote": null, "revision_mode": "hash", "rrev": "647a622a15a72d72cb73e8f0229f616a", "rrev_timestamp": 1742459088.205, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["json", "jwt", "jws", "jwe", "jwk", "jwks", "jose", "header-only"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "0.7.1", "win_bash": null, "win_bash_run": null}, "7": {"author": null, "binary": "Missing", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"sources": {"3.6.0": {"sha256": "b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9", "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.0/openssl-3.6.0.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"386": false, "capieng_dialog": false, "enable_capieng": false, "enable_trace": false, "enable_weak_ssl_ciphers": false, "fPIC": true, "no_apps": false, "no_aria": false, "no_asm": false, "no_async": false, "no_autoload_config": false, "no_bf": false, "no_blake2": false, "no_camellia": false, "no_cast": false, "no_chacha": false, "no_cms": false, "no_comp": false, "no_ct": false, "no_deprecated": false, "no_des": false, "no_dgram": false, "no_dh": false, "no_dsa": false, "no_dso": false, "no_ec": false, "no_ecdh": false, "no_ecdsa": false, "no_engine": false, "no_filenames": false, "no_fips": false, "no_gost": false, "no_idea": false, "no_legacy": false, "no_md2": true, "no_md4": false, "no_mdc2": false, "no_module": false, "no_ocsp": false, "no_pinshared": false, "no_rc2": false, "no_rc4": false, "no_rc5": false, "no_rfc3779": false, "no_rmd160": false, "no_seed": false, "no_sm2": false, "no_sm3": false, "no_sm4": false, "no_sock": false, "no_srp": false, "no_srtp": false, "no_sse2": false, "no_ssl": false, "no_ssl3": false, "no_stdio": false, "no_threads": false, "no_tls1": false, "no_ts": false, "no_whirlpool": false, "no_zlib": false, "openssldir": null, "shared": false, "tls_security_level": null}, "dependencies": {"8": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": "minor_mode", "ref": "zlib/1.3.1", "require": "zlib/[\u003e=1.2.11 \u003c2]", "run": false, "skip": false, "test": false, "transitive_headers": null, "transitive_libs": null, "visible": true}}, "deprecated": null, "description": "A toolkit for the Transport Layer Security (TLS) and Secure Sockets Layer (SSL) protocols", "generators": [], "generators_folder": null, "homepage": "https://github.com/openssl/openssl", "id": "7", "immutable_package_folder": null, "info": {"options": {"386": "False", "enable_trace": "False", "enable_weak_ssl_ciphers": "False", "fPIC": "True", "no_apps": "False", "no_aria": "False", "no_asm": "False", "no_async": "False", "no_autoload_config": "False", "no_bf": "False", "no_blake2": "False", "no_camellia": "False", "no_cast": "False", "no_chacha": "False", "no_cms": "False", "no_comp": "False", "no_ct": "False", "no_deprecated": "False", "no_des": "False", "no_dgram": "False", "no_dh": "False", "no_dsa": "False", "no_dso": "False", "no_ec": "False", "no_ecdh": "False", "no_ecdsa": "False", "no_engine": "False", "no_filenames": "False", "no_fips": "False", "no_gost": "False", "no_idea": "False", "no_legacy": "False", "no_md2": "True", "no_md4": "False", "no_mdc2": "False", "no_module": "False", "no_ocsp": "False", "no_pinshared": "False", "no_rc2": "False", "no_rc4": "False", "no_rc5": "False", "no_rfc3779": "False", "no_rmd160": "False", "no_seed": "False", "no_sm2": "False", "no_sm3": "False", "no_sm4": "False", "no_sock": "False", "no_srp": "False", "no_srtp": "False", "no_sse2": "False", "no_ssl": "False", "no_ssl3": "False", "no_stdio": "False", "no_threads": "False", "no_tls1": "False", "no_ts": "False", "no_whirlpool": "False", "no_zlib": "False", "openssldir": null, "shared": "False", "tls_security_level": null}, "requires": ["zlib/1.3.Z"], "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "openssl/3.6.0", "languages": [], "license": "Apache-2.0", "name": "openssl", "options": {"386": "False", "enable_trace": "False", "enable_weak_ssl_ciphers": "False", "fPIC": "True", "no_apps": "False", "no_aria": "False", "no_asm": "False", "no_async": "False", "no_autoload_config": "False", "no_bf": "False", "no_blake2": "False", "no_camellia": "False", "no_cast": "False", "no_chacha": "False", "no_cms": "False", "no_comp": "False", "no_ct": "False", "no_deprecated": "False", "no_des": "False", "no_dgram": "False", "no_dh": "False", "no_dsa": "False", "no_dso": "False", "no_ec": "False", "no_ecdh": "False", "no_ecdsa": "False", "no_engine": "False", "no_filenames": "False", "no_fips": "False", "no_gost": "False", "no_idea": "False", "no_legacy": "False", "no_md2": "True", "no_md4": "False", "no_mdc2": "False", "no_module": "False", "no_ocsp": "False", "no_pinshared": "False", "no_rc2": "False", "no_rc4": "False", "no_rc5": "False", "no_rfc3779": "False", "no_rmd160": "False", "no_seed": "False", "no_sm2": "False", "no_sm3": "False", "no_sm4": "False", "no_sock": "False", "no_srp": "False", "no_srtp": "False", "no_sse2": "False", "no_ssl": "False", "no_ssl3": "False", "no_stdio": "False", "no_threads": "False", "no_tls1": "False", "no_ts": "False", "no_whirlpool": "False", "no_zlib": "False", "openssldir": null, "shared": "False", "tls_security_level": null}, "options_definitions": {"386": ["True", "False"], "enable_trace": ["True", "False"], "enable_weak_ssl_ciphers": ["True", "False"], "fPIC": ["True", "False"], "no_apps": ["True", "False"], "no_aria": ["True", "False"], "no_asm": ["True", "False"], "no_async": ["True", "False"], "no_autoload_config": ["True", "False"], "no_bf": ["True", "False"], "no_blake2": ["True", "False"], "no_camellia": ["True", "False"], "no_cast": ["True", "False"], "no_chacha": ["True", "False"], "no_cms": ["True", "False"], "no_comp": ["True", "False"], "no_ct": ["True", "False"], "no_deprecated": ["True", "False"], "no_des": ["True", "False"], "no_dgram": ["True", "False"], "no_dh": ["True", "False"], "no_dsa": ["True", "False"], "no_dso": ["True", "False"], "no_ec": ["True", "False"], "no_ecdh": ["True", "False"], "no_ecdsa": ["True", "False"], "no_engine": ["True", "False"], "no_filenames": ["True", "False"], "no_fips": ["True", "False"], "no_gost": ["True", "False"], "no_idea": ["True", "False"], "no_legacy": ["True", "False"], "no_md2": ["True", "False"], "no_md4": ["True", "False"], "no_mdc2": ["True", "False"], "no_module": ["True", "False"], "no_ocsp": ["True", "False"], "no_pinshared": ["True", "False"], "no_rc2": ["True", "False"], "no_rc4": ["True", "False"], "no_rc5": ["True", "False"], "no_rfc3779": ["True", "False"], "no_rmd160": ["True", "False"], "no_seed": ["True", "False"], "no_sm2": ["True", "False"], "no_sm3": ["True", "False"], "no_sm4": ["True", "False"], "no_sock": ["True", "False"], "no_srp": ["True", "False"], "no_srtp": ["True", "False"], "no_sse2": ["True", "False"], "no_ssl": ["True", "False"], "no_ssl3": ["True", "False"], "no_stdio": ["True", "False"], "no_threads": ["True", "False"], "no_tls1": ["True", "False"], "no_ts": ["True", "False"], "no_whirlpool": ["True", "False"], "no_zlib": ["True", "False"], "openssldir": [null, "ANY"], "shared": ["True", "False"], "tls_security_level": [null, "0", "1", "2", "3", "4", "5"]}, "options_description": null, "package_folder": null, "package_id": "60ffdd79094c4153147472e6e8d874116af63dc7", "package_type": "static-library", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/opense8436f9d76bcc/e", "ref": "openssl/3.6.0#89e8af1d4a21afcac0557079d23d8890", "remote": null, "revision_mode": "hash", "rrev": "89e8af1d4a21afcac0557079d23d8890", "rrev_timestamp": 1759746682.365, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["ssl", "tls", "encryption", "security"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "3.6.0", "win_bash": null, "win_bash_run": null}, "8": {"author": null, "binary": "Missing", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"patches": {"1.3.1": [{"patch_description": "separate static/shared builds, disable debug suffix", "patch_file": "patches/1.3.1/0001-fix-cmake.patch", "patch_type": "conan"}]}, "sources": {"1.3.1": {"sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23", "url": ["https://zlib.net/fossils/zlib-1.3.1.tar.gz", "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"]}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"fPIC": true, "shared": false}, "dependencies": {}, "deprecated": null, "description": "A Massively Spiffy Yet Delicately Unobtrusive Compression Library (Also Free, Not to Mention Unencumbered by Patents)", "generators": [], "generators_folder": null, "homepage": "https://zlib.net", "id": "8", "immutable_package_folder": null, "info": {"options": {"fPIC": "True", "shared": "False"}, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "zlib/1.3.1", "languages": [], "license": "Zlib", "name": "zlib", "options": {"fPIC": "True", "shared": "False"}, "options_definitions": {"fPIC": ["True", "False"], "shared": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "5172837b05c2f087e99d128455aac37041416625", "package_type": "static-library", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Downloaded", "recipe_folder": "/home/artur/.conan2/p/zlib204752602052d/e", "ref": "zlib/1.3.1#b8bc2603263cf7eccbd6e17e66b0ed76", "remote": "conancenter", "revision_mode": "hash", "rrev": "b8bc2603263cf7eccbd6e17e66b0ed76", "rrev_timestamp": 1733936244.862, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["zlib", "compression"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "1.3.1", "win_bash": null, "win_bash_run": null}, "9": {"author": null, "binary": "Missing", "binary_remote": null, "build_folder": null, "build_id": null, "build_policy": null, "channel": null, "conandata": {"fmt_version_mapping": {"1.16.0": "12.0.0"}, "sources": {"1.16.0": {"sha256": "8741753e488a78dd0d0024c980e1fb5b5c85888447e309d9cb9d949bdb52aa3e", "url": "https://github.com/gabime/spdlog/archive/v1.16.0.tar.gz"}}}, "conf_info": {}, "context": "host", "cpp_info": {"root": {"bindirs": ["bin"], "builddirs": null, "cflags": null, "cxxflags": null, "defines": null, "exe": null, "exelinkflags": null, "frameworkdirs": null, "frameworks": null, "includedirs": ["include"], "languages": null, "libdirs": ["lib"], "libs": null, "link_location": null, "location": null, "objects": null, "properties": null, "requires": null, "resdirs": null, "sharedlinkflags": null, "sources": null, "srcdirs": null, "sysroot": null, "system_libs": null, "type": null}}, "default_options": {"fPIC": true, "header_only": false, "no_exceptions": false, "shared": false, "use_std_fmt": false, "wchar_console": false, "wchar_filenames": false, "wchar_support": false}, "dependencies": {"10": {"build": false, "direct": true, "force": false, "headers": true, "libs": true, "package_id_mode": "minor_mode", "ref": "fmt/12.0.0", "require": "fmt/12.0.0", "run": false, "skip": false, "test": false, "transitive_headers": true, "transitive_libs": true, "visible": true}}, "deprecated": null, "description": "Fast C++ logging library", "generators": [], "generators_folder": null, "homepage": "https://github.com/gabime/spdlog", "id": "9", "immutable_package_folder": null, "info": {"options": {"fPIC": "True", "header_only": "False", "no_exceptions": "False", "shared": "False", "use_std_fmt": "False"}, "requires": ["fmt/12.0.Z"], "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}}, "info_invalid": null, "invalid_build": false, "label": "spdlog/1.16.0", "languages": [], "license": "MIT", "name": "spdlog", "options": {"fPIC": "True", "header_only": "False", "no_exceptions": "False", "shared": "False", "use_std_fmt": "False"}, "options_definitions": {"fPIC": ["True", "False"], "header_only": ["True", "False"], "no_exceptions": ["True", "False"], "shared": ["True", "False"], "use_std_fmt": ["True", "False"]}, "options_description": null, "package_folder": null, "package_id": "9e458f69c3a49276ab2b8df542b043aa13734b98", "package_type": "static-library", "prev": null, "prev_timestamp": null, "provides": null, "python_requires": null, "recipe": "Cache", "recipe_folder": "/home/artur/.conan2/p/spdloef3ae8d29d12b/e", "ref": "spdlog/1.16.0#942c2c39562ae25ba575d9c8e2bdf3b6", "remote": null, "revision_mode": "hash", "rrev": "942c2c39562ae25ba575d9c8e2bdf3b6", "rrev_timestamp": 1760375663.769, "settings": {"arch": "x86_64", "build_type": "Release", "compiler": "gcc", "compiler.cppstd": "gnu17", "compiler.libcxx": "libstdc++11", "compiler.version": "15", "os": "Linux"}, "source_folder": null, "system_requires": {}, "test": false, "topics": ["logger", "logging", "log-filtering", "file sink", "header-only"], "upload_policy": null, "url": "https://github.com/conan-io/conan-center-index", "user": null, "vendor": false, "version": "1.16.0", "win_bash": null, "win_bash_run": null}}, "overrides": {}, "replaced_requires": {}, "resolved_ranges": {"cmake/[\u003e=3.20 \u003c4]": "cmake/3.31.9", "jwt-cpp/[\u003e=0.7]": "jwt-cpp/0.7.1", "libpqxx/[\u003e=7.9]": "libpqxx/7.10.3", "nlohmann_json/[\u003e=3.11]": "nlohmann_json/3.12.0", "oatpp/[\u003e=1.3]": "oatpp/1.3.0.latest", "openssl/[\u003e=1.1 \u003c4]": "openssl/3.6.0", "spdlog/[\u003e=1.12]": "spdlog/1.16.0", "zlib/[\u003e=1.2.11 \u003c2]": "zlib/1.3.1"}, "root": {"0": "None"}};
+            let hide_build = false;
+            let hide_test = false;
+            let search_pkgs = null;
+            let focus_search = false;
+            let excluded_pkgs = null;
+            let collapse_packages = false;
+            let show_package_type = false;
+            let color_map = {Cache: "SkyBlue",
+                             Download: "LightGreen",
+                             Build: "Yellow",
+                             Missing: "Orange",
+                             Update: "SeaGreen",
+                             Skip: "White",
+                             Editable: "LightCyan",
+                             EditableBuild: "Cyan",
+                             Invalid: "Red",
+                             Platform: "Violet"};
+            let global_edges = {};
+            function define_data(){
+                let nodes = [];
+                let edges = [];
+                let collapsed_packages = {};
+                let targets = {};
+                global_edges = {};
+                let edge_counter = 0;
+                let conflict=null;
+                if (graph_data["error"] && graph_data["error"]["type"] == "conflict")
+                    conflict = graph_data["error"];
+                for (const [node_id, node] of Object.entries(graph_data["nodes"])) {
+                    if (node.context == "build" && hide_build) continue;
+                    if (node.test && hide_test) continue;
+                    let shape = node.context == "build" || node.test ? "ellipse" : "box";
+                    let label = null;
+                    if (node["name"])
+                        label =  node["name"] + "/" + node["version"];
+                    else if (node["ref"])
+                        label = node["ref"];
+                    else
+                        label = node.recipe == "Consumer"? "conanfile": "CLI";
+                    if (collapse_packages) {
+                        let existing = collapsed_packages[label];
+                        targets[node_id] = existing;
+                        if (existing) continue;
+                        collapsed_packages[label] = node_id;
+                    }
+                    if (excluded_pkgs) {
+                        let patterns = excluded_pkgs.split(',')
+                            .map(pattern => pattern.trim())
+                            .filter(pattern => pattern.length > 0)
+                            .map(pattern => pattern.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+                        if (patterns.some(pattern => label.match(pattern))) {
+                            continue;
+                        }
+                    }
+                    if (show_package_type) {
+                         label = "<b>" + label + "\n" + "<i>" + node.package_type + "</i>";
+                    }
+                    borderWidth = 1;
+                    borderColor = "SkyBlue";
+                    font = {multi: 'html'};
+                    shapeProperties = {};
+                    let color = color_map[node.binary]
+                    if (conflict && conflict.branch1.dst_id == node_id){
+                        font.color = "white";
+                        color = "Black";
+                        shape = "circle";
+                    }
+                    if (search_pkgs) {
+                        let patterns = search_pkgs.split(',')
+                            .map(pattern => pattern.trim())
+                            .filter(pattern => pattern.length > 0)
+                            .map(pattern => pattern.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+                        if (patterns.some(pattern => label.match(pattern))) {
+                            borderWidth = 3;
+                            borderColor = "Magenta";
+                            if (focus_search) {
+                                focus_search = node_id;
+                            }
+                        }
+                    }
+                    if (node.test) {
+                        font.background = "lightgrey";
+                        shapeProperties = {borderDashes: true};
+                    }
+                    if (node.recipe == "Platform") {
+                        font.background = "Violet";
+                    }
+                    if (node.vendor) {
+                        borderColor = "Red";
+                        shapeProperties = {borderDashes: [3,5]};
+                        borderWidth = 2;
+                    }
+                    nodes.push({
+                        id: node_id,
+                        font: font,
+                        label: label,
+                        shape: shape,
+                        shapeProperties: shapeProperties,
+                        borderWidth: borderWidth,
+                        color: {border: borderColor, background: color,
+                                highlight: {background: color, border: "Blue"}},
+                    });
+                }
+                for (const [node_id, node] of Object.entries(graph_data["nodes"])) {
+                    for (const [dep_id, dep] of Object.entries(node["dependencies"])) {
+                        if (dep.direct){
+                            let target_id = targets[dep_id] || dep_id;
+                            edges.push({id: edge_counter, from: node_id, to: target_id,
+                                        color: {color: "SkyBlue", highlight: "Blue"}});
+                            global_edges[edge_counter++] = dep;
+                        }
+                    }
+                }
+                if (conflict) {
+                    let conflict_id = null;
+                    if (conflict.branch1.dst_id) { // already created conflict node
+                        conflict_id = conflict.branch1.dst_id;
+                    }
+                    else {
+                        conflict_id = "conflict_id";
+                        nodes.push({
+                            id: conflict_id,
+                            font: {color: "white"},
+                            label: conflict.name,
+                            shape: "circle",
+                            color: {background: "black",
+                                    highlight: {background: "black", border: "Blue"}},
+                        });
+                        edges.push({id: edge_counter, from: conflict.branch1.src_id, to: conflict_id,
+                                    color: {color: "Red", highlight: "Red"},
+                                    label: conflict.branch1.require.ref});
+                        global_edges[edge_counter++] = conflict.branch1.require;
+                    }
+                    edges.push({id: edge_counter, from: conflict.branch2.src_id, to: conflict_id,
+                                color: {color: "Red", highlight: "Red"},
+                                label: conflict.branch2.require.ref});
+                    global_edges[edge_counter++] = conflict.branch2.require;
+                }
+                return {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges)};
+            };
+            function define_legend() {
+                let x = 0;
+                let y = 0;
+                let step = 250;
+                let legend_nodes = [];
+                legend_nodes.push({id: 0, x: x, y: y, shape: "box", font: {size: 35},
+                    label: "require",
+                });
+                legend_nodes.push({id: 1, x: x + step, y: y, font: {size: 35}, shape: "ellipse",
+                    label: "tool-require",
+                });
+                legend_nodes.push({id: 2, x: x + 2* step, y: y, font: {size: 35, background: "lightgrey"},
+                    shape: "ellipse", shapeProperties: {borderDashes: true},
+                    label: "test-require",
+                })
+                let counter = 3;
+                legend_nodes.push({x: x + counter*step, y: y, shape: "ellipse",
+                    label: "platform",
+                    font: {size: 35, background: "Violet"},
+                });
+                counter++;
+                for (const [status, color] of Object.entries(color_map)) {
+                    legend_nodes.push({x: x + counter*step, y: y, shape: "box", font: {size: 35},
+                        label: status,
+                        color: {border: "SkyBlue", background: color}
+                    });
+                    counter++;
+                }
+                legend_nodes.push({x: x + counter*step, y: y, shape: "box",
+                    label: "conflict",
+                    font: {size: 35, color: "white"},
+                    color: {border: "SkyBlue", background: "Black"}
+                });
+                counter++;
+
+                legend_nodes.push({x: x + counter*step, y: y, shape: "box",
+                    label: "vendor", font: {size: 35},
+                    color: {border: "Red"},
+                    shapeProperties: {borderDashes: [3,5]},
+                    borderWidth: 2
+                });
+                return {nodes: new vis.DataSet(legend_nodes)};
+            }
+            let error = document.getElementById("error");
+            if (graph_data["error"]){
+                 let div = document.createElement('div');
+                 div.innerHTML = "<pre>Error in the graph: " + JSON.stringify(graph_data["error"], undefined, 2) + "</pre>";
+                 error.appendChild(div);
+            }
+            let container = document.getElementById('mynetwork');
+            let controls = document.getElementById('controls');
+            let legend_container = document.getElementById('mylegend');
+
+            let options = {
+                autoResize: true,
+                locale: 'en',
+                edges: {
+                    arrows: { to: {enabled: true} },
+                    smooth: { enabled: false}
+                },
+                nodes: {font: {'face': 'monospace', 'align': 'left'}},
+                layout: {
+                    "hierarchical": {
+                        enabled: true,
+                        sortMethod: "directed",
+                        direction: "DU",
+                        nodeSpacing: 170,
+                        blockShifting: true,
+                        edgeMinimization: true,
+                        shakeTowards: "roots",
+                    }
+                },
+                physics: { enabled: false},
+                configure: {
+                    enabled: true,
+                    filter: 'layout physics',
+                    showButton: false,
+                    container: controls
+                }
+            };
+
+            let data = define_data();
+            let network = new vis.Network(container, data, options);
+            let legend_data = define_legend();
+            let options_legend = {interaction: {selectable: false, dragView: false, dragNodes: false,
+                                                zoomView: false}, physics: {enabled: false}};
+            let legend = new vis.Network(legend_container, legend_data, options_legend);
+
+            network.on('click', function (properties) {
+                let ids = properties.nodes;
+                let ids_edges = properties.edges;
+                let control = document.getElementById("details");
+                while (control.firstChild) {
+                    control.removeChild(control.firstChild);
+                }
+                if(ids[0] !== undefined || ids_edges[0] !== undefined) {
+                    selected = graph_data["nodes"][ids[0]] || global_edges[ids_edges[0]];
+                    let div = document.createElement('div');
+                    let f = Object.fromEntries(Object.entries(selected).filter(([_, v]) => v != null));
+                    div.innerText = JSON.stringify(f, undefined, 2);
+                    let div2 = document.createElement('div');
+                    div2.innerHTML = "<pre>" + div.innerHTML + "</pre>";
+                    control.appendChild(div2);
+                }
+                else {
+                    control.innerHTML = "<b>Info</b>: Click on a package or edge for more info";
+                }
+            });
+            function draw() {
+                let scale = network.getScale();
+                let viewPos = network.getViewPosition();
+                data = define_data();
+                network.setData(data);
+                network.redraw();
+                network.moveTo({position: viewPos, scale: scale});
+                // If we have found a package to focus, we need to move the view
+                if (typeof focus_search === "string") {
+                    network.focus(focus_search, {animation: true, locked: false});
+                }
+            }
+            function switchBuild() {
+                hide_build = !hide_build;
+                draw();
+            }
+            function switchTest() {
+                hide_test = !hide_test;
+                draw();
+            }
+            function collapsePackages() {
+                collapse_packages = !collapse_packages;
+                draw();
+            }
+            const debounce = (func, delay) => {
+                let timeout;
+                return function(...args) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), delay);
+                };
+            };
+            const debouncedDraw = debounce(draw, 300);
+            function searchPackages(e) {
+                search_pkgs = e.value;
+                debouncedDraw();
+            }
+            function onSearchKeyDown(event) {
+                if (event.key === "Enter") {
+                    focus_search = true;
+                    draw();
+                    focus_search = false;
+                }
+            }
+            function excludePackages(e) {
+                excluded_pkgs = e.value;
+                debouncedDraw();
+            }
+            function showPackageType(e) {
+                show_package_type = !show_package_type;
+                draw();
+            }
+            function showhideclass(id) {
+                let elements = document.getElementsByClassName(id)
+                for (let i = 0; i < elements.length; i++) {
+                    elements[i].style.display = (elements[i].style.display != 'none') ? 'none' : 'block';
+                }
+            }
+            window.addEventListener("load", () => {
+               draw();
+            });
+        </script>
+    </body>
+</html>

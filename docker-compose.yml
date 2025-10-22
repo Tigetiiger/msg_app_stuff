@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    network_mode: host
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-appdb}
+    volumes:
+      # Data files stored locally; not tracked by git
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-appdb}"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  flyway:
+    image: flyway/flyway:10
+    network_mode: host
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/${POSTGRES_DB:-appdb}
+      FLYWAY_USER: ${POSTGRES_USER:-app}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql 
+    command: migrate
+    volumes:
+      # Mount migrations read-only
+      - ./migrations:/flyway/sql:ro
