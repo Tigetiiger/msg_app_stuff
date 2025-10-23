@@ -33,3 +33,20 @@ services:
     volumes:
       # Mount migrations read-only
       - ./migrations:/flyway/sql:ro
+  redis:
+    image: redis:7-alpine
+    network_mode: "host"              # use the host network (no ports:)
+    volumes:
+      - ./redis-data:/data
+        # Bind to loopback; enable AOF; keep protected mode on
+    command: [
+      "redis-server",
+      "--bind", "127.0.0.1",
+      "--appendonly", "yes",
+      "--loglevel", "warning"
+    ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

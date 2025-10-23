@@ -4,5 +4,6 @@
 /.cache/
 /.conan/
 pgdata/
+/redis-data/
 .env
 .venv

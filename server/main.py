@@ -8,6 +8,8 @@ import models
 
 app = FastAPI(title="msg_api")
 
+token_auth = security.token_auth()
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with Session() as s:
@@ -23,7 +25,7 @@ async def create_user(body: models.CreateUserModel, db: AsyncSession = Depends(g
         RETURNING id, username, display_name, mail, created_at
     """
     )
-    password_hash = security.hash_password(body.new_password)
+    password_hash = security.hash_with_argon2(body.new_password)
     res = await db.execute(
         q,
         {
@@ -43,11 +45,11 @@ async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
     q = text("SELECT id, password_hash FROM users WHERE username=:u")
     res = (await db.execute(q, {"u": body.username})).mappings().first()
 
-    if not res or not security.verify_password(body.password, res["password_hash"]):
+    if not res or not security.verify_hash(body.password, res["password_hash"]):
         raise HTTPException(status_code=401, detail="invalid credentials")
 
     if security.needs_rehash(res["password_hash"]):
-        new_hash = security.hash_password(body.password)
+        new_hash = security.hash_with_argon2(body.password)
         await db.execute(
             text(
                 "UPDATE users SET password_hash=:pw, password_updated_at=now() WHERE username=:u"
@@ -56,7 +58,9 @@ async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
         )
         await db.commit()
 
-    return "ok"
+    token = token_auth.generate_token()
+    token_auth.save_token(user_id=res["id"], device_id=body.device_id, token=token)
+    return {"msg": "login successful", "token": token}
 
 
 print("lolol")

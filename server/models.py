@@ -11,3 +11,4 @@ class CreateUserModel(BaseModel):
 class LoginModel(BaseModel):
     username: str
     password: str
+    device_id: str
