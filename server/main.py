@@ -1,8 +1,10 @@
-from typing import AsyncGenerator
-from fastapi import FastAPI, Depends, HTTPException
+from typing import AsyncGenerator, Annotated
+from fastapi import FastAPI, Depends, HTTPException, status, Header
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import Session
+from uuid import UUID
 import security
 import models
 
@@ -37,7 +39,7 @@ async def create_user(body: models.CreateUserModel, db: AsyncSession = Depends(g
     )
     ret = res.mappings().one()
     await db.commit()
-    return dict(ret)
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=dict(ret))
 
 
 @app.post("/auth/login")
@@ -60,7 +62,61 @@ async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
 
     token = token_auth.generate_token()
     token_auth.save_token(user_id=res["id"], device_id=body.device_id, token=token)
-    return {"msg": "login successful", "token": token}
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={"msg": "login successful", "token": token},
+    )
+
+
+@app.post("/conversations/new")
+async def new_group(body: models.NewGroup, db: AsyncSession = Depends(get_db)):
+    q = text(
+        """
+    INSERT INTO conversations (type, created_by, title)
+    VALUES (:ty, :cb, :ti)
+    RETURNING id
+    """
+    )
+    res = await db.execute(
+        q,
+        {
+            "ty": (1 if len(body.other_participants_ids) <= 2 else 2),
+            "cb": body.user_id,
+            "ti": body.conversation_title,
+        },
+    )
+    ret = res.mappings().one()
+
+    q2 = text(
+        """
+        INSERT INTO conversation_participants (conversation_id, user_id, role)
+        VALUES (:ci, :ui, :r)
+    """
+    )
+    await db.execute(q2, {"ci": ret["id"], "ui": body.user_id, "r": 3})
+    for i in body.other_participants_ids:
+        await db.execute(q2, {"ci": ret["id"], "ui": i, "r": 1})
+    await db.commit()
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED, content={"msg": "conversation created"}
+    )
+
+
+@app.get("/conversations")
+async def get_all_conversations(
+    user_id: Annotated[UUID, Header(alias="user_id")],
+    db: AsyncSession = Depends(get_db),
+):
+    q = text(
+        """
+        SELECT conversation_id FROM conversation_participants WHERE user_id=:ui
+    """
+    )
+    res = await db.execute(q, {"ui": user_id})
+    ret = res.scalars().all()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"conversations": [str(i) for i in ret]}
+    )
 
 
 print("lolol")
