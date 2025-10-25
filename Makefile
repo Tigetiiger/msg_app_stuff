@@ -18,7 +18,7 @@ psql:
 	docker compose exec db sh -lc 'psql -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)"'
 
 migrate:
-	dockr compose run --rm flyway
+	docker compose run --rm flyway
 
 seed:
 	docker compose exec -T db sh -lc 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f /dev/stdin' < seed/dev_seed.sql

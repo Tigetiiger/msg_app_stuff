@@ -1,7 +1,9 @@
 from typing import AsyncGenerator, Annotated
 from fastapi import FastAPI, Depends, HTTPException, status, Header
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import Session
 from uuid import UUID
@@ -28,18 +30,35 @@ async def create_user(body: models.CreateUserModel, db: AsyncSession = Depends(g
     """
     )
     password_hash = security.hash_with_argon2(body.new_password)
-    res = await db.execute(
-        q,
-        {
-            "u": body.username,
-            "d": body.display_name,
-            "m": body.mail,
-            "pw": password_hash,
-        },
-    )
-    ret = res.mappings().one()
-    await db.commit()
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=dict(ret))
+    try:
+        res = await db.execute(
+            q,
+            {
+                "u": body.username,
+                "d": body.display_name,
+                "m": body.mail,
+                "pw": password_hash,
+            },
+        )
+        ret = res.mappings().one()
+        await db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED, content=jsonable_encoder(dict(ret))
+        )
+    except IntegrityError as e:
+        await db.rollback()
+        sqlstate = getattr(getattr(e, "orig", None), "sqlstate", None)
+        if sqlstate == "23505":
+            # Optional: use constraint name to tailor the message
+            constraint = getattr(e.orig, "constraint_name", None)
+            if constraint == "users_username_key":
+                detail = "username already exists"
+            elif constraint == "users_mail_key":
+                detail = "email already exists"
+            else:
+                detail = "resource already exists"
+            raise HTTPException(status_code=409, detail=detail)
+        raise
 
 
 @app.post("/auth/login")
@@ -109,7 +128,7 @@ async def get_all_conversations(
 ):
     q = text(
         """
-        SELECT id, title FROM conversations WHERE id IN (SELECT conversation_id FROM conversation_participants WHERE user_id=:ui)
+        SELECT id, title, last_written_to FROM conversations WHERE id IN (SELECT conversation_id FROM conversation_participants WHERE user_id=:ui) ORDER BY last_written_to DESC
     """
     )
     res = await db.execute(q, {"ui": user_id})
