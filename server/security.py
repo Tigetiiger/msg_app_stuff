@@ -1,6 +1,8 @@
 from typing import cast
 from passlib.context import CryptContext
 from datetime import timedelta
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 import redis
 import uuid
 
@@ -38,9 +40,26 @@ class token_auth:
         hash = hash_with_argon2(token)
         self.redis_session.set(str(user_id) + device_id, hash, ex=timedelta(hours=72))
 
-    def verify_token(self, user_id: str, token: str, device_id: str) -> bool | None:
+    def verify_token(self, user_id: int, token: str, device_id: str) -> bool | None:
         hash = self.redis_session.get(str(user_id) + device_id)
         if not hash:
             return None
         str_hash: str = cast(str, hash)
-        return verify_hash(token, str_hash)
+        if verify_hash(token, str_hash):
+            self.redis_session.expire(str(user_id) + device_id, timedelta(hours=72))
+            return True
+        return False
+
+
+class db_verification:
+    async def verify_user_in_conversation(
+        self, conversation_id: int, user_id: int, db: AsyncSession
+    ) -> bool:
+        q = text(
+            """
+           SELECT * FROM conversation_participants WHERE conversation_id = :ci AND user_id = :ui LIMIT 1 
+        """
+        )
+        return (
+            await db.execute(q, {"ci": conversation_id, "ui": user_id})
+        ).first() is not None

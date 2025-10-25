@@ -5,14 +5,16 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_401_UNAUTHORIZED
 from db import Session
-from uuid import UUID
 import security
 import models
 
 app = FastAPI(title="msg_api")
 
 token_auth = security.token_auth()
+
+db_auth = security.db_verification()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -62,9 +64,14 @@ async def create_user(body: models.CreateUserModel, db: AsyncSession = Depends(g
 
 
 @app.post("/auth/login")
-async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
-    q = text("SELECT id, password_hash FROM users WHERE username=:u")
-    res = (await db.execute(q, {"u": body.username})).mappings().first()
+async def login(
+    body: models.LoginModel,
+    user_id: Annotated[int, Header(alias="user_id")],
+    device_id: Annotated[str, Header(alias="device_id")],
+    db: AsyncSession = Depends(get_db),
+):
+    q = text("SELECT id, password_hash FROM users WHERE id=:id")
+    res = (await db.execute(q, {"id": user_id})).mappings().first()
 
     if not res or not security.verify_hash(body.password, res["password_hash"]):
         raise HTTPException(status_code=401, detail="invalid credentials")
@@ -73,14 +80,14 @@ async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
         new_hash = security.hash_with_argon2(body.password)
         await db.execute(
             text(
-                "UPDATE users SET password_hash=:pw, password_updated_at=now() WHERE username=:u"
+                "UPDATE users SET password_hash=:pw, password_updated_at=now() WHERE id=:id"
             ),
-            {"pw": new_hash, "u": body.username},
+            {"pw": new_hash, "id": user_id},
         )
         await db.commit()
 
     token = token_auth.generate_token()
-    token_auth.save_token(user_id=res["id"], device_id=body.device_id, token=token)
+    token_auth.save_token(user_id=res["id"], device_id=device_id, token=token)
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
         content={"msg": "login successful", "token": token},
@@ -88,7 +95,18 @@ async def login(body: models.LoginModel, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/conversations/new")
-async def new_group(body: models.NewGroup, db: AsyncSession = Depends(get_db)):
+async def new_group(
+    body: models.NewGroup,
+    user_id: Annotated[int, Header(alias="user_id")],
+    device_id: Annotated[str, Header(alias="device_id")],
+    token: Annotated[str, Header(alias="token")],
+    db: AsyncSession = Depends(get_db),
+):
+    if not token_auth.verify_token(user_id=user_id, device_id=device_id, token=token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"msg": "invalid credentials"},
+        )
     q = text(
         """
     INSERT INTO conversations (type, created_by, title)
@@ -100,7 +118,7 @@ async def new_group(body: models.NewGroup, db: AsyncSession = Depends(get_db)):
         q,
         {
             "ty": (1 if len(body.other_participants_ids) <= 2 else 2),
-            "cb": body.user_id,
+            "cb": int(user_id),
             "ti": body.conversation_title,
         },
     )
@@ -112,9 +130,9 @@ async def new_group(body: models.NewGroup, db: AsyncSession = Depends(get_db)):
         VALUES (:ci, :ui, :r)
     """
     )
-    await db.execute(q2, {"ci": ret["id"], "ui": body.user_id, "r": 3})
+    await db.execute(q2, {"ci": int(ret["id"]), "ui": int(user_id), "r": 3})
     for i in body.other_participants_ids:
-        await db.execute(q2, {"ci": ret["id"], "ui": i, "r": 1})
+        await db.execute(q2, {"ci": int(ret["id"]), "ui": int(i), "r": 1})
     await db.commit()
     return JSONResponse(
         status_code=status.HTTP_201_CREATED, content={"msg": "conversation created"}
@@ -123,15 +141,22 @@ async def new_group(body: models.NewGroup, db: AsyncSession = Depends(get_db)):
 
 @app.get("/conversations")
 async def get_all_conversations(
-    user_id: Annotated[UUID, Header(alias="user_id")],
+    user_id: Annotated[int, Header(alias="user_id")],
+    device_id: Annotated[str, Header(alias="device_id")],
+    token: Annotated[str, Header(alias="token")],
     db: AsyncSession = Depends(get_db),
 ):
+    if not token_auth.verify_token(user_id=user_id, device_id=device_id, token=token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"msg": "invalid credentials"},
+        )
     q = text(
         """
         SELECT id, title, last_written_to FROM conversations WHERE id IN (SELECT conversation_id FROM conversation_participants WHERE user_id=:ui) ORDER BY last_written_to DESC
     """
     )
-    res = await db.execute(q, {"ui": user_id})
+    res = await db.execute(q, {"ui": int(user_id)})
     ret = res.mappings().all()
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -139,7 +164,64 @@ async def get_all_conversations(
     )
 
 
-print("lolol")
+@app.post("/conversations/{conversation_id}/messages")
+async def send_message(
+    conversation_id: int,
+    user_id: Annotated[int, Header(alias="user_id")],
+    device_id: Annotated[str, Header(alias="device_id")],
+    token: Annotated[str, Header(alias="token")],
+    body: models.SendMessageModel,
+    db: AsyncSession = Depends(get_db),
+):
+    if not token_auth.verify_token(user_id=user_id, device_id=device_id, token=token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if not await db_auth.verify_user_in_conversation(
+        user_id=user_id, conversation_id=conversation_id, db=db
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    q = text(
+        """
+        INSERT INTO messages (conversation_id, sender_id, body)
+        VALUES (:ci, :si, :b)
+        RETURNING id, body
+    """
+    )
+    res = await db.execute(q, {"ci": conversation_id, "si": user_id, "b": body.message})
+    ret = res.mappings().one()
+    await db.commit()
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"id": ret["id"], "msg": ret["body"]},
+    )
+
+
+@app.get("/conversations/{conversation_id}/messages")
+async def get_message(
+    conversation_id: int,
+    user_id: Annotated[int, Header(alias="user_id")],
+    device_id: Annotated[str, Header(alias="device_id")],
+    token: Annotated[str, Header(alias="token")],
+    db: AsyncSession = Depends(get_db),
+):
+    if not token_auth.verify_token(user_id=user_id, device_id=device_id, token=token):
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED, detail={"msg": "invalid credentials"}
+        )
+    q = text(
+        """
+        SELECT id, body, created_at FROM messages WHERE conversation_id = :ci ORDER BY created_at DESC LIMIT 20
+    """
+    )
+    res = await db.execute(q, {"ci": conversation_id})
+    ret = res.mappings().all()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "messages": [
+                [str(i["id"]), str(i["body"]), str(i["created_at"])] for i in ret
+            ]
+        },
+    )
 
 
 @app.get("/")
