@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS app.conversations (
   type          SMALLINT NOT NULL CHECK (type IN (1, 2)),
   created_by    UUID NOT NULL REFERENCES app.users(id),
   title         TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_written_to TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 3) Participants (membership)

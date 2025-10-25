@@ -109,13 +109,14 @@ async def get_all_conversations(
 ):
     q = text(
         """
-        SELECT conversation_id FROM conversation_participants WHERE user_id=:ui
+        SELECT id, title FROM conversations WHERE id IN (SELECT conversation_id FROM conversation_participants WHERE user_id=:ui)
     """
     )
     res = await db.execute(q, {"ui": user_id})
-    ret = res.scalars().all()
+    ret = res.mappings().all()
     return JSONResponse(
-        status_code=status.HTTP_200_OK, content={"conversations": [str(i) for i in ret]}
+        status_code=status.HTTP_200_OK,
+        content={"conversations": [(str(i["id"]), str(i["title"])) for i in ret]},
     )
 
 
