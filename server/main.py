@@ -207,6 +207,10 @@ async def get_message(
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED, detail={"msg": "invalid credentials"}
         )
+    if not await db_auth.verify_user_in_conversation(
+        user_id=user_id, conversation_id=conversation_id, db=db
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     q = text(
         """
         SELECT id, body, created_at FROM messages WHERE conversation_id = :ci ORDER BY created_at DESC LIMIT 20
